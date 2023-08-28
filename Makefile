@@ -1,4 +1,4 @@
-build:git
+build:
 	docker build -t tgbot .
 
 run:
