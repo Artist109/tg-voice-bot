@@ -4,6 +4,7 @@ import c from "config";
 import { ogg } from "./ogg.js";
 import { openAIOur } from "./openAi.js";
 import { OpenAIApi } from "openai";
+import fs from "fs";
 
 const bot = new Telegraf(c.get("TELEGRAM_TOKEN"));
 const INITIAL_SESSION = {
@@ -37,6 +38,7 @@ bot.on(message("voice"), async (ctx) => {
     const mp3Path = await ogg.toMp3(oggPath, userId);
 
     const text = await openAIOur.transcription(mp3Path);
+
     await ctx.reply(
       `Ваш запрос: "${text}" \nВремя обработки запроса: от 2 секунд до 1 минуты. `
     );
@@ -53,6 +55,8 @@ bot.on(message("voice"), async (ctx) => {
     });
 
     await ctx.reply(resopnse.content);
+
+    setTimeout(() => fs.rmSync(mp3Path), 1000); // удаляем голосовой файл
   } catch (e) {
     console.log("Ошибка в голосовой функции", e.message);
   }
