@@ -3,6 +3,7 @@ import { message } from "telegraf/filters";
 import c from "config";
 import { ogg } from "./ogg.js";
 import { openAIOur } from "./openAi.js";
+import { OpenAIApi } from "openai";
 
 const bot = new Telegraf(c.get("TELEGRAM_TOKEN"));
 const INITIAL_SESSION = {
@@ -20,6 +21,7 @@ bot.command("new", async (ctx) => {
 
 bot.command("start", async (ctx) => {
   ctx.session = INITIAL_SESSION;
+  console.log(ctx.session);
   await ctx.reply(
     `Ваш запрос: "${text}" \nВремя обработки запроса: от 2 секунд до 1 минуты. `
   );
@@ -27,6 +29,7 @@ bot.command("start", async (ctx) => {
 
 bot.on(message("voice"), async (ctx) => {
   ctx.session ??= INITIAL_SESSION;
+
   try {
     const userId = String(ctx.message.from.id);
     const fileLink = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
@@ -42,6 +45,7 @@ bot.on(message("voice"), async (ctx) => {
       role: openAIOur.roles.USER,
       content: text,
     });
+
     const resopnse = await openAIOur.chat(ctx.session.messages);
     ctx.session.messages.push({
       role: openAIOur.roles.ASSISTANT,
@@ -57,22 +61,25 @@ bot.on(message("voice"), async (ctx) => {
 bot.on(message("text"), async (ctx) => {
   ctx.session ??= INITIAL_SESSION;
   try {
-    const text = await openAIOur.transcription(ctx.message.text);
+    const text = ctx.message.text;
+    // await ctx.reply(JSON.stringify(ctx.session, null, 2));
     await ctx.reply(
       `Ваш запрос: "${text}" \nВремя обработки запроса: от 2 секунд до 1 минуты. `
     );
 
     ctx.session.messages.push({
       role: openAIOur.roles.USER,
-      content: ctx.session.messages,
+      content: text,
     });
+
+    const response = await openAIOur.chat(ctx.session.messages);
 
     ctx.session.messages.push({
       role: openAIOur.roles.ASSISTANT,
-      content: resopnse.content,
+      content: response.content,
     });
 
-    await ctx.reply(resopnse.content);
+    await ctx.reply(response.content);
   } catch (e) {
     console.log("Ошибка в текстовой функции", e.message);
   }
